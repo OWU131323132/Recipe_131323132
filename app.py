@@ -13,7 +13,7 @@ def filter_data(df, selected_cats, nutrient_ranges):
         cond &= (df[nut] >= minv) & (df[nut] <= maxv)
     return df[cond]
 
-def show_recipe_cards_grid(df, cards_per_row=3):
+def show_recipe_cards_grid(df, cards_per_row=3, favorites=[], food_log=[]):
     rows = (len(df) + cards_per_row - 1) // cards_per_row
     for row_i in range(rows):
         cols = st.columns(cards_per_row)
@@ -25,19 +25,30 @@ def show_recipe_cards_grid(df, cards_per_row=3):
             with cols[col_i]:
                 with st.expander(row["料理名"]):
                     st.image(row["画像URL"], use_container_width=True)
+
                     st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
-                    nutrient_cols = [col for col in df.columns if col not in ["料理名", "カテゴリー", "画像URL"]]
-                    nutri_data = {col: row[col] for col in nutrient_cols}
-                    fig = px.pie(values=list(nutri_data.values()), names=nutrient_cols, title="栄養素割合")
+
+                    # 栄養素グラフ表示
+                    nutrients = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
+                    fig = px.bar(
+                        x=nutrients,
+                        y=[row[n] for n in nutrients],
+                        labels={"x": "栄養素", "y": "量"},
+                        title="栄養素グラフ"
+                    )
                     st.plotly_chart(fig, use_container_width=True)
-                    if st.button(f"この料理を食事記録に追加", key=f"add_{idx}"):
-                        if "meal_log" not in st.session_state:
-                            st.session_state.meal_log = []
-                        st.session_state.meal_log.append(row)
-                    if st.button(f"お気に入りに追加", key=f"fav_{idx}"):
-                        if "favorites" not in st.session_state:
-                            st.session_state.favorites = []
-                        st.session_state.favorites.append(row)
+
+                    # 食事記録ボタン
+                    if st.button(f"🍽️ 食べた！ {row['料理名']}", key=f"log_{idx}"):
+                        food_log.append(row["料理名"])
+                        st.session_state["food_log"] = food_log.copy()
+                        st.success("食事記録に追加！")
+
+                    # お気に入りボタン
+                    if st.button(f"⭐ お気に入り {row['料理名']}", key=f"fav_{idx}"):
+                        favorites.append(row["料理名"])
+                        st.session_state["favorites"] = favorites.copy()
+                        st.success("お気に入りに追加！")
 
 def plot_radar(df, selected_recipes):
     if selected_recipes:
@@ -56,22 +67,36 @@ def plot_radar(df, selected_recipes):
     else:
         st.info("レシピを選択すると栄養素比較グラフを表示します。")
 
-def show_meal_log():
-    if "meal_log" not in st.session_state or len(st.session_state.meal_log) == 0:
-        st.info("食事記録はまだありません。")
-        return
-    st.subheader("一日の食事記録")
-    log_df = pd.DataFrame(st.session_state.meal_log)
-    st.dataframe(log_df[["料理名", "カテゴリー"] + [col for col in log_df.columns if col not in ["料理名", "カテゴリー", "画像URL"]]], use_container_width=True)
-    total_nutrients = log_df.drop(columns=["料理名", "カテゴリー", "画像URL"]).sum()
-    fig = px.bar(total_nutrients, x=total_nutrients.index, y=total_nutrients.values, labels={'x':'栄養素', 'y':'合計量'}, title="一日の栄養素合計")
-    st.plotly_chart(fig, use_container_width=True)
+def plot_food_log_summary(df, food_log):
+    if food_log:
+        st.subheader("🍱 今日の食事記録：")
+        st.write(food_log)
+
+        log_df = df[df["料理名"].isin(food_log)]
+        summary = log_df[["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]].sum()
+        st.write("**合計栄養素**", summary)
+
+        fig = px.bar(
+            x=summary.index,
+            y=summary.values,
+            labels={"x": "栄養素", "y": "合計量"},
+            title="今日の食事合計栄養素"
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
 def main():
     st.set_page_config(page_title="栄養素豊富レシピダッシュボード", layout="wide")
     st.title("🥗 栄養素たっぷりレシピダッシュボード")
 
     df = load_data()
+
+    if "favorites" not in st.session_state:
+        st.session_state["favorites"] = []
+    if "food_log" not in st.session_state:
+        st.session_state["food_log"] = []
+
+    favorites = st.session_state["favorites"]
+    food_log = st.session_state["food_log"]
 
     st.sidebar.header("フィルター")
     categories = df["カテゴリー"].unique().tolist()
@@ -86,36 +111,60 @@ def main():
     filtered_df = filter_data(df, selected_cats, nutrient_ranges)
 
     st.subheader(f"検索結果：{len(filtered_df)}件")
-    show_recipe_cards_grid(filtered_df, cards_per_row=3)
+    show_recipe_cards_grid(filtered_df, favorites=favorites, food_log=food_log)
 
     st.sidebar.header("ランキング表示")
     ranking_type = st.sidebar.selectbox("ランキング軸選択", ["カロリー低い順", "たんぱく質多い順", "脂質バランス良い順", "ビタミン豊富順"])
 
+    # フィルター後のランキングデータ
+    rank_df = filtered_df.copy()
+
     if ranking_type == "カロリー低い順":
-        rank_df = filtered_df.sort_values("カロリー")
+        rank_df = rank_df.sort_values("カロリー")
+        highlight_col = "カロリー"
     elif ranking_type == "たんぱく質多い順":
-        rank_df = filtered_df.sort_values("たんぱく質", ascending=False)
+        rank_df = rank_df.sort_values("たんぱく質", ascending=False)
+        highlight_col = "たんぱく質"
     elif ranking_type == "脂質バランス良い順":
-        rank_df = filtered_df.assign(脂糖合計=filtered_df["脂質"] + filtered_df["糖質"]).sort_values(["脂糖合計", "たんぱく質"])
+        rank_df = rank_df.assign(脂糖合計=rank_df["脂質"] + rank_df["糖質"]).sort_values(["脂糖合計", "たんぱく質"])
+        highlight_col = "脂質"
     else:
-        rank_df = filtered_df.assign(ビタミン合計=filtered_df["ビタミンA"] + filtered_df["ビタミンC"]).sort_values("ビタミン合計", ascending=False)
+        rank_df = rank_df.assign(ビタミン合計=rank_df["ビタミンA"] + rank_df["ビタミンC"]).sort_values("ビタミン合計", ascending=False)
+        highlight_col = "ビタミンA"
 
     st.subheader(f"{ranking_type} トップ5")
-    highlight_col = "カロリー" if "カロリー" in ranking_type else "たんぱく質" if "たんぱく質" in ranking_type else "脂糖合計" if "脂質" in ranking_type else "ビタミン合計"
-    show_cols = ["料理名", "カテゴリー"] + ([highlight_col] if highlight_col in rank_df.columns else []) + nutrient_cols
-    st.dataframe(rank_df[show_cols].head(5), use_container_width=True)
 
+    show_cols = ["料理名", "カテゴリー"] + nutrient_cols
+    rank_display_df = rank_df[show_cols].head(5)
+
+    # DataFrameのスタイル適用
+    st.dataframe(
+        rank_display_df.style.applymap(
+            lambda v: "background-color: #e0f7fa;" if v == rank_display_df[highlight_col].max() or v == rank_display_df[highlight_col].min() else "",
+            subset=[highlight_col]
+        ),
+        use_container_width=True
+    )
+
+    st.subheader("レーダーチャート")
     selected_recipes = st.multiselect("比較したいレシピを選択", filtered_df["料理名"].tolist())
     plot_radar(df, selected_recipes)
 
-    st.markdown("---")
-    show_meal_log()
+    plot_food_log_summary(df, food_log)
 
-    st.markdown("---")
-    if "favorites" in st.session_state and st.session_state.favorites:
-        st.subheader("お気に入りレシピ")
-        fav_df = pd.DataFrame(st.session_state.favorites)
-        st.dataframe(fav_df[["料理名", "カテゴリー"] + nutrient_cols], use_container_width=True)
+    st.sidebar.header("お気に入り一覧")
+    if favorites:
+        st.sidebar.write(favorites)
+    else:
+        st.sidebar.write("お気に入りなし")
+
+    if st.sidebar.button("お気に入り全消し"):
+        st.session_state["favorites"] = []
+        st.experimental_rerun()
+
+    if st.sidebar.button("食事記録全消し"):
+        st.session_state["food_log"] = []
+        st.experimental_rerun()
 
 if __name__ == "__main__":
     main()
