@@ -12,12 +12,12 @@ def filter_data(df, selected_cats, nutrient_ranges):
         cond &= (df[nut] >= minv) & (df[nut] <= maxv)
     return df[cond]
 
-def show_recipe_cards_grid(df, cards_per_row=3, food_log=[]):
-    rows = (len(df) + cards_per_row - 1) // cards_per_row
+def show_recipe_cards_grid(df, food_log=[]):
+    rows = (len(df) + 2) // 3  # cards_per_row=3固定
     for row_i in range(rows):
-        cols = st.columns(cards_per_row)
-        for col_i in range(cards_per_row):
-            idx = row_i * cards_per_row + col_i
+        cols = st.columns(3)
+        for col_i in range(3):
+            idx = row_i * 3 + col_i
             if idx >= len(df):
                 break
             row = df.iloc[idx]
@@ -33,10 +33,10 @@ def show_recipe_cards_grid(df, cards_per_row=3, food_log=[]):
                     fig.update_layout(title="栄養素グラフ", yaxis_title="量")
                     st.plotly_chart(fig, use_container_width=True)
 
+                    # ボタン押下でsession_stateに登録
                     if st.button(f"🍽️ 食べた！ {row['料理名']}", key=f"log_{idx}"):
-                        food_log.append(row["料理名"])
-                        st.session_state["food_log"] = food_log.copy()
-                        st.experimental_rerun()
+                        st.session_state["add_food"] = True
+                        st.session_state["add_food_name"] = row["料理名"]
 
 def plot_food_log_summary(df, food_log):
     if not food_log:
@@ -65,7 +65,6 @@ def plot_food_log_summary(df, food_log):
             y=[stacked_data[nutrient][i] for nutrient in nutrients]
         ))
 
-    # 横方向の目安摂取量ライン
     target_values = {
         "カロリー": 2000,
         "たんぱく質": 60,
@@ -78,15 +77,9 @@ def plot_food_log_summary(df, food_log):
         "カルシウム": 650,
     }
 
-    for nutrient in nutrients:
-        fig.add_shape(
-            type="line",
-            x0=-0.5, x1=len(nutrients)-0.5,
-            y0=target_values[nutrient], y1=target_values[nutrient],
-            line=dict(color="red", dash="dash"),
-            yref='y',
-            xref='x'
-        )
+    # 横ライン（Y軸基準）のみ追加
+    for val in target_values.values():
+        fig.add_hline(y=val, line_dash="dash", line_color="red")
 
     fig.update_layout(
         barmode='stack',
@@ -105,6 +98,16 @@ def main():
 
     if "food_log" not in st.session_state:
         st.session_state["food_log"] = []
+
+    # 追加ボタン押されたらここで処理してrerun
+    if st.session_state.get("add_food", False):
+        food_name = st.session_state.get("add_food_name")
+        if food_name:
+            st.session_state["food_log"].append(food_name)
+        st.session_state["add_food"] = False
+        st.session_state["add_food_name"] = None
+        st.experimental_rerun()
+
     food_log = st.session_state["food_log"]
 
     st.sidebar.header("フィルター")
