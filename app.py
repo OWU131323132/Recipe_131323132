@@ -12,7 +12,8 @@ def filter_data(df, selected_cats, nutrient_ranges):
         cond &= (df[nut] >= minv) & (df[nut] <= maxv)
     return df[cond]
 
-def show_recipe_cards_grid(df, cards_per_row=3, food_log=[]):
+def show_recipe_cards_grid(df, food_log=[]):
+    cards_per_row = 3
     rows = (len(df) + cards_per_row - 1) // cards_per_row
     for row_i in range(rows):
         cols = st.columns(cards_per_row)
@@ -35,7 +36,7 @@ def show_recipe_cards_grid(df, cards_per_row=3, food_log=[]):
                     if st.button(f"🍽️ 食べた！ {row['料理名']}", key=f"log_{idx}"):
                         food_log.append(row["料理名"])
                         st.session_state["food_log"] = food_log.copy()
-                        st.success("食事記録に追加！")
+                        st.experimental_rerun()  # 追加：状態変化後に画面リロードしてUI更新
 
 def plot_food_log_summary(df, food_log):
     if not food_log:
@@ -63,7 +64,6 @@ def plot_food_log_summary(df, food_log):
             y=[stacked_data[nutrient][i] for nutrient in nutrients]
         ))
 
-    # 横ライン：目安摂取量
     target_values = {
         "カロリー": 2000,
         "たんぱく質": 60,
@@ -125,7 +125,7 @@ def main():
 
     if st.sidebar.button("食事記録クリア"):
         st.session_state["food_log"] = []
-        st.success("食事記録をクリアしました！")
+        st.experimental_rerun()  # クリア後にリロードしてグラフを更新
 
 if __name__ == "__main__":
     main()
