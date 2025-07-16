@@ -141,8 +141,11 @@ def main():
     st.sidebar.header("ランキング表示")
     ranking_type = st.sidebar.selectbox("ランキング軸選択", ["カロリー低い順", "たんぱく質多い順", "脂質少ない順", "ビタミン豊富順"])
 
-    st.subheader(f"{ranking_type} トップ5")
-    # ソート軸ごとの表示カラムとソートカラム名の対応を作成
+    def highlight_column(col_name, current_sort):
+        def highlight(s):
+            return ['background-color: #cce5ff' if col_name == current_sort else '' for _ in s]
+        return highlight
+
     if ranking_type == "カロリー低い順":
         rank_df = filtered_df.sort_values("カロリー")
         show_cols = ["料理名", "カテゴリー", "カロリー", "たんぱく質", "脂質", "ビタミンA"]
@@ -160,12 +163,8 @@ def main():
         show_cols = ["料理名", "カテゴリー", "ビタミン合計", "カロリー", "たんぱく質", "脂質"]
         sort_col = "ビタミン合計"
 
-    def highlight_column(col_name):
-        def highlight(s):
-            return ['background-color: #cce5ff' if s.name == col_name else '' for _ in s]
-        return highlight
-
-    styled_df = rank_df[show_cols].head(5).style.apply(highlight_column(sort_col), axis=0)
+    st.subheader(f"{ranking_type} トップ5")
+    styled_df = rank_df[show_cols].head(5).style.apply(highlight_column(sort_col, sort_col), axis=0)
     st.dataframe(styled_df, use_container_width=True)
 
     st.subheader("🍽️ 食事記録")
