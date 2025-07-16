@@ -47,8 +47,8 @@ def plot_radar(df, selected_recipes):
     else:
         st.info("レシピを選択すると栄養素比較グラフを表示します。")
 
-def highlight_column(s, target_col):
-    return ['background-color: lightgray' if col == target_col else '' for col in s.index]
+def highlight_column(s, colname):
+    return ['background-color: #e6f2ff' if s.name == colname else '' for _ in s]
 
 def main():
     st.set_page_config(page_title="栄養素豊富レシピダッシュボード", layout="wide")
@@ -74,29 +74,27 @@ def main():
     st.sidebar.header("ランキング表示")
     ranking_type = st.sidebar.selectbox("ランキング軸選択", ["カロリー低い順", "たんぱく質多い順", "脂質バランス良い順", "ビタミン豊富順"])
 
-    sort_col = None
+    # フィルタリング後のデータでランキング作成
     rank_df = filtered_df.copy()
+
     if ranking_type == "カロリー低い順":
-        sort_col = "カロリー"
         rank_df = rank_df.sort_values("カロリー")
+        highlight_col = "カロリー"
     elif ranking_type == "たんぱく質多い順":
-        sort_col = "たんぱく質"
         rank_df = rank_df.sort_values("たんぱく質", ascending=False)
+        highlight_col = "たんぱく質"
     elif ranking_type == "脂質バランス良い順":
-        sort_col = "脂糖合計"
         rank_df = rank_df.assign(脂糖合計=rank_df["脂質"] + rank_df["糖質"]).sort_values(["脂糖合計", "たんぱく質"])
+        highlight_col = "脂質"
     else:  # ビタミン豊富順
-        sort_col = "ビタミン合計"
         rank_df = rank_df.assign(ビタミン合計=rank_df["ビタミンA"] + rank_df["ビタミンC"]).sort_values("ビタミン合計", ascending=False)
+        highlight_col = "ビタミン合計"
 
     st.subheader(f"{ranking_type} トップ5")
+    top5_df = rank_df.head(5)
 
-    display_cols = ["料理名", "カテゴリー", "カロリー", "たんぱく質", "脂質", "糖質"]
-    if sort_col not in display_cols:
-        display_cols.append(sort_col)
-
-    styled_df = rank_df[display_cols].head(5).style.apply(highlight_column, axis=1, target_col=sort_col)
-    st.dataframe(styled_df, use_container_width=True)
+    styled_rank_df = top5_df.style.apply(lambda s: highlight_column(s, highlight_col), axis=0)
+    st.dataframe(styled_rank_df, use_container_width=True)
 
     selected_recipes = st.multiselect("比較したいレシピを選択", filtered_df["料理名"].tolist())
     plot_radar(df, selected_recipes)
