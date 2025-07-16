@@ -35,7 +35,8 @@ def show_recipe_cards_grid(df, cards_per_row=3):
             row = df.iloc[idx]
             with cols[col_i]:
                 with st.expander(row["料理名"]):
-                    st.image(row["画像URL"], use_container_width=True)
+                    # 画像表示を削除しました
+                    # st.image(row["画像URL"], use_container_width=True)
                     st.plotly_chart(plot_nutrient_bar(row), use_container_width=True)
                     st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
                     if st.button(f"🍽️ 食べた ( {row['料理名']} )", key=row["料理名"]):
@@ -141,31 +142,21 @@ def main():
     st.sidebar.header("ランキング表示")
     ranking_type = st.sidebar.selectbox("ランキング軸選択", ["カロリー低い順", "たんぱく質多い順", "脂質少ない順", "ビタミン豊富順"])
 
-    def highlight_column(col_name, current_sort):
-        def highlight(s):
-            return ['background-color: #cce5ff' if col_name == current_sort else '' for _ in s]
-        return highlight
-
     if ranking_type == "カロリー低い順":
         rank_df = filtered_df.sort_values("カロリー")
         show_cols = ["料理名", "カテゴリー", "カロリー", "たんぱく質", "脂質", "ビタミンA"]
-        sort_col = "カロリー"
     elif ranking_type == "たんぱく質多い順":
         rank_df = filtered_df.sort_values("たんぱく質", ascending=False)
         show_cols = ["料理名", "カテゴリー", "たんぱく質", "カロリー", "脂質", "ビタミンA"]
-        sort_col = "たんぱく質"
     elif ranking_type == "脂質少ない順":
         rank_df = filtered_df.sort_values("脂質")
         show_cols = ["料理名", "カテゴリー", "脂質", "カロリー", "たんぱく質", "ビタミンA"]
-        sort_col = "脂質"
     else:  # ビタミン豊富順
         rank_df = filtered_df.assign(ビタミン合計=filtered_df["ビタミンA"] + filtered_df["ビタミンC"]).sort_values("ビタミン合計", ascending=False)
         show_cols = ["料理名", "カテゴリー", "ビタミン合計", "カロリー", "たんぱく質", "脂質"]
-        sort_col = "ビタミン合計"
 
     st.subheader(f"{ranking_type} トップ5")
-    styled_df = rank_df[show_cols].head(5).style.apply(highlight_column(sort_col, sort_col), axis=0)
-    st.dataframe(styled_df, use_container_width=True)
+    st.dataframe(rank_df[show_cols].head(5), use_container_width=True)
 
     st.subheader("🍽️ 食事記録")
     plot_food_log_summary(df, st.session_state.food_log)
