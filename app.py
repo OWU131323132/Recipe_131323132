@@ -4,7 +4,9 @@ import plotly.graph_objects as go
     
 @st.cache_data
 def load_data():
-    return pd.read_csv("data/recipes.csv")
+    df = pd.read_csv("data/recipes.csv")
+    df = df[~df["料理名"].str.contains("2|２")]
+    return df
 
 def filter_data(df, selected_cats, nutrient_ranges):
     cond = df["カテゴリー"].isin(selected_cats)
