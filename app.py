@@ -12,17 +12,20 @@ def filter_data(df, selected_cats, nutrient_ranges):
         cond &= (df[nut] >= minv) & (df[nut] <= maxv)
     return df[cond]
 
-def plot_nutrient_bar(row):
+def plot_nutrient_bar_vertical(row):
     nutrients = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
     values = [row[nut] for nut in nutrients]
 
     fig = go.Figure(go.Bar(
-        x=values,
-        y=nutrients,
-        orientation='h',
-        marker_color="#60a5fa"  # 青系統
+        x=nutrients,
+        y=values,
+        marker_color="#60a5fa"
     ))
-    fig.update_layout(height=300, margin=dict(l=0, r=0, t=20, b=0))
+    fig.update_layout(
+        height=300,
+        margin=dict(l=0, r=0, t=20, b=0),
+        yaxis_title="量",
+    )
     return fig
 
 def show_recipe_cards_grid(df, cards_per_row=3):
@@ -38,7 +41,7 @@ def show_recipe_cards_grid(df, cards_per_row=3):
                 with st.expander(row["料理名"]):
                     st.image(row["画像URL"], use_container_width=True)
                     st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
-                    st.plotly_chart(plot_nutrient_bar(row), use_container_width=True)
+                    st.plotly_chart(plot_nutrient_bar_vertical(row), use_container_width=True)
                     if st.button(f"🍽️ 食べた ({row['料理名']})", key=row["料理名"]):
                         st.session_state.food_log.append(row["料理名"])
 
@@ -50,8 +53,8 @@ def plot_food_log_summary(df, food_log):
     st.subheader("🍱 今日の食事記録グラフ")
 
     nutrients = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
-
     log_df = df[df["料理名"].isin(food_log)]
+
     stacked_data = {nutrient: [] for nutrient in nutrients}
     labels = []
 
@@ -69,7 +72,7 @@ def plot_food_log_summary(df, food_log):
         fig.add_trace(go.Bar(
             name=recipe,
             x=nutrients,
-            y=[stacked_data[nutrient][i] for nutrient in nutrients],
+            y=[stacked_data[nut][i] for nut in nutrients],
             marker_color=color,
         ))
 
@@ -86,7 +89,6 @@ def plot_food_log_summary(df, food_log):
     }
 
     bar_width = 0.8
-
     fig.add_trace(go.Scatter(
         x=[None], y=[None],
         mode='lines',
@@ -100,8 +102,8 @@ def plot_food_log_summary(df, food_log):
         x1 = i + bar_width / 2
         fig.add_shape(
             type="line",
-            x0=x0, x1=x1,
-            y0=y, y1=y,
+            x0=i, x1=i,
+            y0=0, y1=y,
             line=dict(color="red", dash="solid"),
             yref='y',
             xref='x'
@@ -110,7 +112,7 @@ def plot_food_log_summary(df, food_log):
     fig.update_layout(
         barmode='stack',
         yaxis_title="摂取量",
-        legend_title="凡例",
+        legend_title="凡例"
     )
 
     st.plotly_chart(fig, use_container_width=True)
