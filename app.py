@@ -1,21 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import requests
-from PIL import Image
-from io import BytesIO
 
-@st.cache_data(show_spinner=False)
-def load_image_from_url(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        img = Image.open(BytesIO(response.content))
-        return img
-    except Exception as e:
-        st.warning(f"画像の読み込みエラー: {e}")
-        return None
-        
 @st.cache_data
 def load_data():
     return pd.read_csv("data/recipes.csv")
@@ -38,16 +24,6 @@ def plot_nutrient_bar(row):
     )
     return fig
 
-def load_image_from_url(url):
-    try:
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            return BytesIO(response.content)
-        else:
-            return None
-    except:
-        return None
-
 def show_recipe_cards_grid(df, cards_per_row=3):
     rows = (len(df) + cards_per_row - 1) // cards_per_row
     for row_i in range(rows):
@@ -59,9 +35,7 @@ def show_recipe_cards_grid(df, cards_per_row=3):
             row = df.iloc[idx]
             with cols[col_i]:
                 with st.expander(row["料理名"]):
-                    img = load_image_from_url(row["画像URL"])
-                    if img:
-                        st.image(img, use_container_width=True)
+                    # 画像表示を削除しました
                     st.plotly_chart(plot_nutrient_bar(row), use_container_width=True)
                     st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
 
@@ -118,8 +92,6 @@ def plot_food_log_summary(df, food_log):
 
     for i, nutrient in enumerate(nutrients):
         y = target_values[nutrient]
-        x0 = i - bar_width / 2
-        x1 = i + bar_width / 2
         fig.add_shape(
             type="line",
             x0=i, x1=i,
