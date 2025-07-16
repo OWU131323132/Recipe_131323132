@@ -114,8 +114,8 @@ def plot_food_log_summary(df, food_log):
     st.plotly_chart(fig, use_container_width=True)
 
 def main():
-    st.set_page_config(page_title="栄養素たっぷりレシピダッシュボード", layout="wide")
-    st.title("🥗 栄養素たっぷりレシピダッシュボード")
+    st.set_page_config(page_title="食事栄養ナビ", layout="wide")
+    st.title("🥗 食事栄養ナビ")
 
     if "food_log" not in st.session_state:
         st.session_state.food_log = []
