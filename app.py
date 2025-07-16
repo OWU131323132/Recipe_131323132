@@ -3,7 +3,17 @@ import pandas as pd
 import plotly.graph_objects as go
 import requests
 from io import BytesIO
+from PIL import Image
 
+def load_image_from_url(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return Image.open(BytesIO(response.content))
+    except Exception as e:
+        st.warning(f"画像の読み込みエラー: {e}")
+        return None
+        
 @st.cache_data
 def load_data():
     return pd.read_csv("data/recipes.csv")
@@ -46,16 +56,14 @@ def show_recipe_cards_grid(df, cards_per_row=3):
                 break
             row = df.iloc[idx]
             with cols[col_i]:
+                # ここが変更箇所：expanderを開いたら画像を読み込み表示する
                 with st.expander(row["料理名"]):
-                    img = load_image_from_url(row["画像URL"])
-                    if img:
-                        st.image(img, use_container_width=True)
-                    else:
-                        st.error("画像の読み込みに失敗しました")
+                    if st.checkbox("画像を表示", key=f"img_toggle_{idx}"):
+                        img = load_image_from_url(row["画像URL"])
+                        if img:
+                            st.image(img, use_container_width=True)
                     st.plotly_chart(plot_nutrient_bar(row), use_container_width=True)
                     st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
-                    if st.button(f"🍽️ 食べた ( {row['料理名']} )", key=row["料理名"]):
-                        st.session_state.food_log.append(row["料理名"])
 
 def plot_food_log_summary(df, food_log):
     if not food_log:
