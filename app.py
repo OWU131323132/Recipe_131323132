@@ -55,12 +55,27 @@ def plot_food_log_summary(df, food_log):
         for nutrient in nutrients:
             stacked_data[nutrient].append(row[nutrient])
 
+    # 青系グラデーションの色を用意
+    blue_colors = [
+        "#1f77b4",  # 青
+        "#3b8ec2",
+        "#5ca0d3",
+        "#7db1e5",
+        "#9ec3f7",
+        "#bdd6fb",
+        "#dbe9fd",
+        "#eaf5fe",
+        "#f5fbff"
+    ]
+
     fig = go.Figure()
     for i, recipe in enumerate(labels):
+        color = blue_colors[i % len(blue_colors)]
         fig.add_trace(go.Bar(
             name=recipe,
             x=nutrients,
-            y=[stacked_data[nutrient][i] for nutrient in nutrients]
+            y=[stacked_data[nutrient][i] for nutrient in nutrients],
+            marker_color=color,
         ))
 
     target_values = {
@@ -77,6 +92,16 @@ def plot_food_log_summary(df, food_log):
 
     bar_width = 0.8
 
+    # 目安ラインの凡例用に1本だけ透明バーで作成（表示しないけど凡例は表示）
+    fig.add_trace(go.Bar(
+        x=[nutrients[0]],
+        y=[target_values[nutrients[0]]],
+        name="一日目安ライン",
+        marker_color="red",
+        opacity=0,
+        showlegend=True,
+    ))
+
     for i, nutrient in enumerate(nutrients):
         y = target_values[nutrient]
         x0 = i - bar_width / 2
@@ -85,11 +110,10 @@ def plot_food_log_summary(df, food_log):
             type="line",
             x0=x0, x1=x1,
             y0=y, y1=y,
-            line=dict(color="red", dash="solid"),  # 実線に変更
+            line=dict(color="red", dash="solid"),
             yref='y',
             xref='x'
         )
-        # ラベル削除（何も書かずに表示しない）
 
     fig.update_layout(
         barmode='stack',
@@ -100,6 +124,7 @@ def plot_food_log_summary(df, food_log):
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
 
 
 
