@@ -75,33 +75,21 @@ def plot_food_log_summary(df, food_log):
         "カルシウム": 650,
     }
 
-    bar_width = 0.8  # Plotlyのバーの幅はおよそ0.8なので、それに合わせる
+    bar_width = 0.8
 
     for i, nutrient in enumerate(nutrients):
         y = target_values[nutrient]
-        # x座標はカテゴリなのでi。バーの幅に合わせて少し左右に線を引く
         x0 = i - bar_width / 2
         x1 = i + bar_width / 2
         fig.add_shape(
             type="line",
             x0=x0, x1=x1,
             y0=y, y1=y,
-            line=dict(color="red", dash="dash"),
+            line=dict(color="red", dash="solid"),  # 実線に変更
             yref='y',
             xref='x'
         )
-        # ラベルは線の真上（xの中心）に表示
-        fig.add_annotation(
-            x=i,
-            y=y,
-            text=f"{nutrient} 目安",
-            showarrow=False,
-            font=dict(color="red", size=12),
-            bgcolor="rgba(255,255,255,0.7)",
-            xanchor='center',
-            yanchor='bottom',
-            yshift=5
-        )
+        # ラベル削除（何も書かずに表示しない）
 
     fig.update_layout(
         barmode='stack',
@@ -112,6 +100,7 @@ def plot_food_log_summary(df, food_log):
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
 
 
 def main():
