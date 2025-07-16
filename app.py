@@ -55,20 +55,14 @@ def plot_food_log_summary(df, food_log):
         for nutrient in nutrients:
             stacked_data[nutrient].append(row[nutrient])
 
-    # 青系グラデーションの色を用意
+    # 青系の色
     blue_colors = [
-        "#1f77b4",  # 青
-        "#3b8ec2",
-        "#5ca0d3",
-        "#7db1e5",
-        "#9ec3f7",
-        "#bdd6fb",
-        "#dbe9fd",
-        "#eaf5fe",
-        "#f5fbff"
+        "#1f77b4", "#3b8ec2", "#5ca0d3",
+        "#7db1e5", "#9ec3f7", "#bdd6fb"
     ]
 
     fig = go.Figure()
+
     for i, recipe in enumerate(labels):
         color = blue_colors[i % len(blue_colors)]
         fig.add_trace(go.Bar(
@@ -92,16 +86,15 @@ def plot_food_log_summary(df, food_log):
 
     bar_width = 0.8
 
-    # 目安ラインの凡例用に1本だけ透明バーで作成（表示しないけど凡例は表示）
-    fig.add_trace(go.Bar(
-        x=[nutrients[0]],
-        y=[target_values[nutrients[0]]],
-        name="一日目安ライン",
-        marker_color="red",
-        opacity=0,
-        showlegend=True,
+    # 凡例用のダミーライン（実線表示）
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None],
+        mode='lines',
+        line=dict(color="red", dash="solid"),
+        name="一日目安ライン"
     ))
 
+    # 栄養素ごとの目安ライン
     for i, nutrient in enumerate(nutrients):
         y = target_values[nutrient]
         x0 = i - bar_width / 2
@@ -117,9 +110,9 @@ def plot_food_log_summary(df, food_log):
 
     fig.update_layout(
         barmode='stack',
-        title="積み上げ栄養素グラフ + 目安摂取量ライン",
+        title="積み上げ栄養素グラフ + 一日目安ライン",
         yaxis_title="摂取量",
-        legend_title="食べた料理",
+        legend_title="凡例",
         margin=dict(r=100)
     )
 
