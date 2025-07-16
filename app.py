@@ -1,9 +1,6 @@
 import streamlit as st 
 import pandas as pd
 import plotly.graph_objects as go
-
-def load_data():
-    return pd.read_csv("data/recipes.csv")
     
 @st.cache_data
 def load_data():
