@@ -35,9 +35,11 @@ def show_recipe_cards_grid(df, cards_per_row=3):
             row = df.iloc[idx]
             with cols[col_i]:
                 with st.expander(row["料理名"]):
-                    # 画像表示を削除しました
+                    st.image(row["画像URL"], use_container_width=True)
                     st.plotly_chart(plot_nutrient_bar(row), use_container_width=True)
                     st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
+                    if st.button(f"🍽️ 食べた ( {row['料理名']} )", key=row["料理名"]):
+                        st.session_state.food_log.append(row["料理名"])
 
 def plot_food_log_summary(df, food_log):
     if not food_log:
@@ -47,8 +49,8 @@ def plot_food_log_summary(df, food_log):
     st.subheader("🍱 今日の食事記録グラフ")
 
     nutrients = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
-    log_df = df[df["料理名"].isin(food_log)]
 
+    log_df = df[df["料理名"].isin(food_log)]
     stacked_data = {nutrient: [] for nutrient in nutrients}
     labels = []
 
@@ -66,7 +68,7 @@ def plot_food_log_summary(df, food_log):
         fig.add_trace(go.Bar(
             name=recipe,
             x=nutrients,
-            y=[stacked_data[nut][i] for nut in nutrients],
+            y=[stacked_data[nutrient][i] for nutrient in nutrients],
             marker_color=color,
         ))
 
@@ -83,6 +85,7 @@ def plot_food_log_summary(df, food_log):
     }
 
     bar_width = 0.8
+
     fig.add_trace(go.Scatter(
         x=[None], y=[None],
         mode='lines',
@@ -92,10 +95,12 @@ def plot_food_log_summary(df, food_log):
 
     for i, nutrient in enumerate(nutrients):
         y = target_values[nutrient]
+        x0 = i - bar_width / 2
+        x1 = i + bar_width / 2
         fig.add_shape(
             type="line",
-            x0=i, x1=i,
-            y0=0, y1=y,
+            x0=x0, x1=x1,
+            y0=y, y1=y,
             line=dict(color="red", dash="solid"),
             yref='y',
             xref='x'
@@ -104,14 +109,14 @@ def plot_food_log_summary(df, food_log):
     fig.update_layout(
         barmode='stack',
         yaxis_title="摂取量",
-        legend_title="凡例"
+        legend_title="凡例",
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
 def main():
-    st.set_page_config(page_title="食事栄養ナビ", layout="wide")
-    st.title("🥗 食事栄養ナビ")
+    st.set_page_config(page_title="毎日食べたい栄養レシピ", layout="wide")
+    st.title("🥗 毎日食べたい栄養レシピ")
 
     if "food_log" not in st.session_state:
         st.session_state.food_log = []
@@ -145,7 +150,7 @@ def main():
     elif ranking_type == "脂質少ない順":
         rank_df = filtered_df.sort_values("脂質")
         show_cols = ["料理名", "カテゴリー", "脂質", "カロリー", "たんぱく質", "ビタミンA"]
-    else:
+    else:  # ビタミン豊富順
         rank_df = filtered_df.assign(ビタミン合計=filtered_df["ビタミンA"] + filtered_df["ビタミンC"]).sort_values("ビタミン合計", ascending=False)
         show_cols = ["料理名", "カテゴリー", "ビタミン合計", "カロリー", "たんぱく質", "脂質"]
 
