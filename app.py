@@ -12,18 +12,14 @@ def filter_data(df, selected_cats, nutrient_ranges):
         cond &= (df[nut] >= minv) & (df[nut] <= maxv)
     return df[cond]
 
-def plot_nutrient_bar_vertical(row):
+def plot_nutrient_bar(row):
     nutrients = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
-    values = [row[nut] for nut in nutrients]
-
-    fig = go.Figure(go.Bar(
-        x=nutrients,
-        y=values,
-        marker_color="#60a5fa"
-    ))
+    values = [row[n] for n in nutrients]
+    fig = go.Figure(go.Bar(x=nutrients, y=values, marker_color='#1f77b4'))
     fig.update_layout(
-        height=300,
-        margin=dict(l=0, r=0, t=20, b=0),
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=250,
+        xaxis_title="栄養素",
         yaxis_title="量",
     )
     return fig
@@ -40,9 +36,9 @@ def show_recipe_cards_grid(df, cards_per_row=3):
             with cols[col_i]:
                 with st.expander(row["料理名"]):
                     st.image(row["画像URL"], use_container_width=True)
+                    st.plotly_chart(plot_nutrient_bar(row), use_container_width=True)
                     st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
-                    st.plotly_chart(plot_nutrient_bar_vertical(row), use_container_width=True)
-                    if st.button(f"🍽️ 食べた ({row['料理名']})", key=row["料理名"]):
+                    if st.button(f"🍽️ 食べた ( {row['料理名']} )", key=row["料理名"]):
                         st.session_state.food_log.append(row["料理名"])
 
 def plot_food_log_summary(df, food_log):
