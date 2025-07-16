@@ -120,7 +120,7 @@ def main():
     show_recipe_cards_grid(filtered_df, food_log=food_log)
 
     st.sidebar.header("ランキング表示")
-    ranking_type = st.sidebar.selectbox("ランキング軸選択", ["カロリー低い順", "たんぱく質多い順", "脂質バランス良い順", "ビタミン豊富順"])
+    ranking_type = st.sidebar.selectbox("ランキング軸選択", ["カロリー低い順", "たんぱく質多い順", "脂質少ない順", "ビタミン豊富順"])
 
     if ranking_type == "カロリー低い順":
         rank_df = filtered_df.sort_values("カロリー")
@@ -128,8 +128,8 @@ def main():
     elif ranking_type == "たんぱく質多い順":
         rank_df = filtered_df.sort_values("たんぱく質", ascending=False)
         highlight_col = "たんぱく質"
-    elif ranking_type == "脂質バランス良い順":
-        rank_df = filtered_df.assign(脂糖合計=filtered_df["脂質"] + filtered_df["糖質"]).sort_values(["脂糖合計", "たんぱく質"])
+    elif ranking_type == "脂質少ない順":
+        rank_df = filtered_df.sort_values("脂質")
         highlight_col = "脂質"
     else:  # ビタミン豊富順
         rank_df = filtered_df.assign(ビタミン合計=filtered_df["ビタミンA"] + filtered_df["ビタミンC"]).sort_values("ビタミン合計", ascending=False)
@@ -137,7 +137,6 @@ def main():
 
     st.subheader(f"{ranking_type} トップ5")
 
-    # ここを修正：糖質→ビタミンA
     show_cols = ["料理名", "カテゴリー", "カロリー", "たんぱく質", "脂質", "ビタミンA"]
 
     def highlight_cols(s):
