@@ -26,7 +26,8 @@ def show_recipe_cards_grid(df, cards_per_row=3, food_log=[]):
                     st.image(row["画像URL"], use_container_width=True)
                     st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
 
-                    nutrients = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
+                    nutrients = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維",
+                                 "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
                     values = [row[n] for n in nutrients]
                     fig = go.Figure(data=[go.Bar(x=nutrients, y=values)])
                     fig.update_layout(title="栄養素グラフ", yaxis_title="量")
@@ -35,7 +36,7 @@ def show_recipe_cards_grid(df, cards_per_row=3, food_log=[]):
                     if st.button(f"🍽️ 食べた！ {row['料理名']}", key=f"log_{idx}"):
                         food_log.append(row["料理名"])
                         st.session_state["food_log"] = food_log.copy()
-                        st.success("食事記録に追加！")
+                        st.experimental_rerun()
 
 def plot_food_log_summary(df, food_log):
     if not food_log:
@@ -44,7 +45,8 @@ def plot_food_log_summary(df, food_log):
     
     st.subheader("🍱 今日の食事記録グラフ")
 
-    nutrients = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
+    nutrients = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維",
+                 "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
 
     log_df = df[df["料理名"].isin(food_log)]
     stacked_data = {nutrient: [] for nutrient in nutrients}
@@ -63,7 +65,7 @@ def plot_food_log_summary(df, food_log):
             y=[stacked_data[nutrient][i] for nutrient in nutrients]
         ))
 
-    # 横ライン：目安摂取量
+    # 横方向の目安摂取量ライン
     target_values = {
         "カロリー": 2000,
         "たんぱく質": 60,
@@ -109,7 +111,8 @@ def main():
     categories = df["カテゴリー"].unique().tolist()
     selected_cats = st.sidebar.multiselect("カテゴリー選択", categories, default=categories)
 
-    nutrient_cols = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
+    nutrient_cols = ["カロリー", "たんぱく質", "脂質", "糖質",
+                     "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
     nutrient_ranges = {}
     for col in nutrient_cols:
         min_val, max_val = int(df[col].min()), int(df[col].max())
@@ -125,7 +128,8 @@ def main():
 
     if st.sidebar.button("食事記録クリア"):
         st.session_state["food_log"] = []
-        st.success("食事記録をクリアしました！")
+        st.toast("食事記録をクリアしました！")
+        st.experimental_rerun()
 
 if __name__ == "__main__":
     main()
