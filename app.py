@@ -75,21 +75,36 @@ def plot_food_log_summary(df, food_log):
         "カルシウム": 650,
     }
 
-    for nutrient in nutrients:
+    # 栄養素ごとにラインとラベルを追加
+    for i, nutrient in enumerate(nutrients):
+        y = target_values[nutrient]
+        # 横線を引く（x座標は-0.5からnutrients数-0.5まで）
         fig.add_shape(
             type="line",
             x0=-0.5, x1=len(nutrients)-0.5,
-            y0=target_values[nutrient], y1=target_values[nutrient],
+            y0=y, y1=y,
             line=dict(color="red", dash="dash"),
             yref='y',
             xref='x'
+        )
+        # ラベルをラインの右端の少し右に表示
+        fig.add_annotation(
+            x=len(nutrients)-0.4,  # ラインの右端ちょい右
+            y=y,
+            text=f"{nutrient} 目安",
+            showarrow=False,
+            font=dict(color="red", size=12),
+            bgcolor="rgba(255,255,255,0.7)",
+            xanchor='left',
+            yanchor='middle'
         )
 
     fig.update_layout(
         barmode='stack',
         title="積み上げ栄養素グラフ + 目安摂取量ライン",
         yaxis_title="摂取量",
-        legend_title="食べた料理"
+        legend_title="食べた料理",
+        margin=dict(r=100)  # 右側にスペースを作るため
     )
 
     st.plotly_chart(fig, use_container_width=True)
@@ -131,7 +146,7 @@ def main():
     elif ranking_type == "脂質少ない順":
         rank_df = filtered_df.sort_values("脂質")
         highlight_col = "脂質"
-    else:  # ビタミン豊富順
+    else:
         rank_df = filtered_df.assign(ビタミン合計=filtered_df["ビタミンA"] + filtered_df["ビタミンC"]).sort_values("ビタミン合計", ascending=False)
         highlight_col = "ビタミンA"
 
@@ -149,7 +164,7 @@ def main():
 
     if st.sidebar.button("食事記録クリア"):
         st.session_state["food_log"] = []
-        st.success("食事記録をクリアしました！")
+        st.experimental_rerun()
 
 if __name__ == "__main__":
     main()
