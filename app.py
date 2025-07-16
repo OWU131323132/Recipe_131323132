@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st 
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -115,6 +115,12 @@ def plot_food_log_summary(df, food_log):
 
     st.plotly_chart(fig, use_container_width=True)
 
+def highlight_col(col_name):
+    # pandasスタイル用の関数、該当列のセルを薄い青色にする
+    def highlight(s):
+        return ['background-color: #cce5ff' if s.name == col_name else '' for _ in s]
+    return highlight
+
 def main():
     st.set_page_config(page_title="毎日食べたい栄養レシピ", layout="wide")
     st.title("🥗 毎日食べたい栄養レシピ")
@@ -145,18 +151,27 @@ def main():
     if ranking_type == "カロリー低い順":
         rank_df = filtered_df.sort_values("カロリー")
         show_cols = ["料理名", "カテゴリー", "カロリー", "たんぱく質", "脂質", "ビタミンA"]
+        highlight_col_name = "カロリー"
     elif ranking_type == "たんぱく質多い順":
         rank_df = filtered_df.sort_values("たんぱく質", ascending=False)
         show_cols = ["料理名", "カテゴリー", "たんぱく質", "カロリー", "脂質", "ビタミンA"]
+        highlight_col_name = "たんぱく質"
     elif ranking_type == "脂質少ない順":
         rank_df = filtered_df.sort_values("脂質")
         show_cols = ["料理名", "カテゴリー", "脂質", "カロリー", "たんぱく質", "ビタミンA"]
+        highlight_col_name = "脂質"
     else:  # ビタミン豊富順
         rank_df = filtered_df.assign(ビタミン合計=filtered_df["ビタミンA"] + filtered_df["ビタミンC"]).sort_values("ビタミン合計", ascending=False)
         show_cols = ["料理名", "カテゴリー", "ビタミン合計", "カロリー", "たんぱく質", "脂質"]
+        highlight_col_name = "ビタミン合計"
 
     st.subheader(f"{ranking_type} トップ5")
-    st.dataframe(rank_df[show_cols].head(5), use_container_width=True)
+
+    # 色付けして表示
+    styled_df = rank_df[show_cols].head(5).style.apply(
+        lambda s: ['background-color: #cce5ff' if s.name == highlight_col_name else '' for _ in s], axis=1
+    )
+    st.dataframe(styled_df, use_container_width=True)
 
     st.subheader("🍽️ 食事記録")
     plot_food_log_summary(df, st.session_state.food_log)
