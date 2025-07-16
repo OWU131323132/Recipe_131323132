@@ -5,11 +5,16 @@ import plotly.graph_objects as go
 
 @st.cache_data
 def load_data():
-    # ここは実際のファイルパスに合わせてください
-    return pd.read_csv("data/recipes.csv")
+    df = pd.read_csv("data/recipes.csv")
+    # カテゴリー列の空白除去
+    df["カテゴリー"] = df["カテゴリー"].astype(str).str.strip()
+    return df
 
 def filter_data(df, selected_cats, nutrient_ranges):
-    # 栄養素範囲でフィルター
+    # selected_catsが空なら全選択とみなす
+    if not selected_cats:
+        return df
+
     cond = df["カテゴリー"].isin(selected_cats)
     for nut, (minv, maxv) in nutrient_ranges.items():
         cond &= (df[nut] >= minv) & (df[nut] <= maxv)
@@ -20,7 +25,7 @@ def show_recipe_cards(df):
         with st.expander(row["料理名"]):
             cols = st.columns([1, 2])
             with cols[0]:
-                st.image(row["画像URL"], use_container_width=True)  # ←修正箇所
+                st.image(row["画像URL"], use_container_width=True)
             with cols[1]:
                 nutri_text = "\n".join(
                     [f"**{col}**: {row[col]}" for col in df.columns if col not in ["料理名", "カテゴリー", "画像URL"]]
@@ -29,7 +34,6 @@ def show_recipe_cards(df):
                 st.markdown(nutri_text)
 
 def plot_radar(df, selected_recipes):
-    # 選択したレシピの栄養素レーダーチャート比較
     if selected_recipes:
         nutri_cols = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
         fig = go.Figure()
@@ -53,10 +57,9 @@ def main():
     df = load_data()
 
     st.sidebar.header("フィルター")
-    categories = df["カテゴリー"].unique().tolist()
+    categories = sorted(df["カテゴリー"].unique().tolist())
     selected_cats = st.sidebar.multiselect("カテゴリー選択", categories, default=categories)
 
-    # 栄養素のフィルターUIを動的に作成
     nutrient_cols = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
     nutrient_ranges = {}
     for col in nutrient_cols:
@@ -76,7 +79,6 @@ def main():
     elif ranking_type == "たんぱく質多い順":
         rank_df = df.sort_values("たんぱく質", ascending=False)
     elif ranking_type == "脂質バランス良い順":
-        # 脂質と糖質の合計が少なめ、たんぱく質が多いのを優先例
         rank_df = df.assign(脂糖合計=df["脂質"] + df["糖質"]).sort_values(["脂糖合計", "たんぱく質"])
     else:  # ビタミン豊富順
         rank_df = df.assign(ビタミン合計=df["ビタミンA"] + df["ビタミンC"]).sort_values("ビタミン合計", ascending=False)
@@ -84,7 +86,6 @@ def main():
     st.subheader(f"{ranking_type} トップ5")
     st.table(rank_df[["料理名", "カテゴリー", "カロリー", "たんぱく質", "脂質", "糖質"]].head(5))
 
-    # 栄養素比較レーダーチャート
     selected_recipes = st.multiselect("比較したいレシピを選択", filtered_df["料理名"].tolist())
     plot_radar(df, selected_recipes)
 
