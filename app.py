@@ -1,57 +1,76 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
 
-st.title("ご飯レシピ ダッシュボード 🍚")
+st.set_page_config(page_title="究極ご飯ダッシュボード", layout="wide")
 
-# データ読み込み
-df = pd.read_csv("data/recipes.csv")
+st.title("🍽️ 究極のご飯レシピダッシュボード 🍱")
+
+uploaded_file = st.sidebar.file_uploader("CSVファイルをアップロード", type=["csv"])
+
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+else:
+    df = pd.read_csv("data/recipes.csv")
 
 st.sidebar.header("フィルターオプション")
 
-# カテゴリーフィルター
 categories = st.sidebar.multiselect(
     "カテゴリー選択",
     options=df["カテゴリー"].unique(),
-    default=df["カテゴリー"].unique()
+    default=list(df["カテゴリー"].unique())
 )
 
-# カロリー範囲フィルター
 cal_min, cal_max = st.sidebar.slider(
-    "カロリー範囲選択",
+    "カロリー範囲 (kcal)",
     int(df["カロリー"].min()), int(df["カロリー"].max()),
     (int(df["カロリー"].min()), int(df["カロリー"].max()))
 )
 
-# フィルター適用
+search_query = st.sidebar.text_input("料理名検索")
+
 filtered_df = df[
     (df["カテゴリー"].isin(categories)) &
-    (df["カロリー"] >= cal_min) &
-    (df["カロリー"] <= cal_max)
+    (df["カロリー"].between(cal_min, cal_max)) &
+    (df["料理名"].str.contains(search_query, case=False, na=False))
 ]
 
-st.subheader(f"フィルター結果：{len(filtered_df)}件のレシピ")
+st.subheader(f"🍛 {len(filtered_df)} 件のレシピが見つかりました！")
 
-st.dataframe(filtered_df)
+# レシピカード表示
+for _, row in filtered_df.iterrows():
+    with st.container():
+        cols = st.columns([1, 3])
+        with cols[0]:
+            st.image(row["画像URL"], width=120)
+        with cols[1]:
+            st.markdown(f"### {row['料理名']} ({row['カテゴリー']})")
+            st.write(f"カロリー: {row['カロリー']} kcal, たんぱく質: {row['たんぱく質']} g, 脂質: {row['脂質']} g, 糖質: {row['糖質']} g")
 
-# 栄養素平均表示
-st.subheader("栄養素の平均値 (フィルタ後)")
-mean_values = filtered_df[["カロリー", "たんぱく質", "脂質", "糖質"]].mean()
-st.write(mean_values)
+# トップ3高たんぱく質レシピ
+st.subheader("🏆 高たんぱく質ランキング")
+top_protein = filtered_df.sort_values(by="たんぱく質", ascending=False).head(3)
+st.dataframe(top_protein[["料理名", "たんぱく質"]])
 
-# 可視化：栄養素の合計グラフ
-st.subheader("栄養素の合計グラフ")
+# 栄養素サマリー
+st.subheader("📊 栄養素グラフ")
 
-fig, ax = plt.subplots()
-mean_values.plot(kind='bar', ax=ax)
-ax.set_ylabel("量 (g または kcal)")
-st.pyplot(fig)
+col1, col2 = st.columns(2)
 
-# 可視化：カテゴリー割合
-st.subheader("カテゴリー分布")
+with col1:
+    fig = px.bar(filtered_df, x="料理名", y=["たんぱく質", "脂質", "糖質"], barmode="group")
+    st.plotly_chart(fig, use_container_width=True)
 
-category_counts = filtered_df["カテゴリー"].value_counts()
-fig2, ax2 = plt.subplots()
-ax2.pie(category_counts, labels=category_counts.index, autopct="%1.1f%%")
-ax2.axis('equal')
-st.pyplot(fig2)
+with col2:
+    cat_counts = filtered_df["カテゴリー"].value_counts()
+    fig2 = px.pie(values=cat_counts, names=cat_counts.index, title="カテゴリー割合")
+    st.plotly_chart(fig2, use_container_width=True)
+
+# 健康指標付きコメント
+avg_calories = filtered_df["カロリー"].mean()
+if avg_calories < 600:
+    st.success("このフィルタ結果は低カロリーです！🎉")
+elif avg_calories < 750:
+    st.info("このフィルタ結果は適正カロリーです！👍")
+else:
+    st.warning("カロリー高めです！食べすぎ注意⚠️")
