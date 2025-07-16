@@ -12,8 +12,7 @@ def filter_data(df, selected_cats, nutrient_ranges):
         cond &= (df[nut] >= minv) & (df[nut] <= maxv)
     return df[cond]
 
-def show_recipe_cards_grid(df, food_log=[]):
-    cards_per_row = 3
+def show_recipe_cards_grid(df, cards_per_row=3, food_log=[]):
     rows = (len(df) + cards_per_row - 1) // cards_per_row
     for row_i in range(rows):
         cols = st.columns(cards_per_row)
@@ -36,7 +35,7 @@ def show_recipe_cards_grid(df, food_log=[]):
                     if st.button(f"🍽️ 食べた！ {row['料理名']}", key=f"log_{idx}"):
                         food_log.append(row["料理名"])
                         st.session_state["food_log"] = food_log.copy()
-                        st.experimental_rerun()  # 追加：状態変化後に画面リロードしてUI更新
+                        st.success("食事記録に追加！")
 
 def plot_food_log_summary(df, food_log):
     if not food_log:
@@ -64,6 +63,7 @@ def plot_food_log_summary(df, food_log):
             y=[stacked_data[nutrient][i] for nutrient in nutrients]
         ))
 
+    # 横ライン：目安摂取量
     target_values = {
         "カロリー": 2000,
         "たんぱく質": 60,
@@ -120,12 +120,39 @@ def main():
     st.subheader(f"検索結果：{len(filtered_df)}件")
     show_recipe_cards_grid(filtered_df, food_log=food_log)
 
+    st.sidebar.header("ランキング表示")
+    ranking_type = st.sidebar.selectbox("ランキング軸選択", ["カロリー低い順", "たんぱく質多い順", "脂質バランス良い順", "ビタミン豊富順"])
+
+    # 絞り込み結果だけでランキングを作成
+    if ranking_type == "カロリー低い順":
+        rank_df = filtered_df.sort_values("カロリー")
+        highlight_col = "カロリー"
+    elif ranking_type == "たんぱく質多い順":
+        rank_df = filtered_df.sort_values("たんぱく質", ascending=False)
+        highlight_col = "たんぱく質"
+    elif ranking_type == "脂質バランス良い順":
+        rank_df = filtered_df.assign(脂糖合計=filtered_df["脂質"] + filtered_df["糖質"]).sort_values(["脂糖合計", "たんぱく質"])
+        highlight_col = "脂質"
+    else:  # ビタミン豊富順
+        rank_df = filtered_df.assign(ビタミン合計=filtered_df["ビタミンA"] + filtered_df["ビタミンC"]).sort_values("ビタミン合計", ascending=False)
+        highlight_col = "ビタミンA"
+
+    st.subheader(f"{ranking_type} トップ5")
+
+    show_cols = ["料理名", "カテゴリー", "カロリー", "たんぱく質", "脂質", "糖質"]
+
+    # ランキング表のカラムをハイライト（薄い青）
+    def highlight_cols(s):
+        return ['background-color: #d0e7ff' if col == highlight_col else '' for col in s.index]
+
+    st.dataframe(rank_df[show_cols].head(5).style.apply(highlight_cols, axis=1), use_container_width=True)
+
     st.subheader("食事記録まとめ")
     plot_food_log_summary(df, food_log)
 
     if st.sidebar.button("食事記録クリア"):
         st.session_state["food_log"] = []
-        st.experimental_rerun()  # クリア後にリロードしてグラフを更新
+        st.success("食事記録をクリアしました！")
 
 if __name__ == "__main__":
     main()
