@@ -63,7 +63,6 @@ def plot_food_log_summary(df, food_log):
             y=[stacked_data[nutrient][i] for nutrient in nutrients]
         ))
 
-    # 横ライン：目安摂取量
     target_values = {
         "カロリー": 2000,
         "たんぱく質": 60,
@@ -123,7 +122,6 @@ def main():
     st.sidebar.header("ランキング表示")
     ranking_type = st.sidebar.selectbox("ランキング軸選択", ["カロリー低い順", "たんぱく質多い順", "脂質バランス良い順", "ビタミン豊富順"])
 
-    # 絞り込み結果だけでランキングを作成
     if ranking_type == "カロリー低い順":
         rank_df = filtered_df.sort_values("カロリー")
         highlight_col = "カロリー"
@@ -139,9 +137,9 @@ def main():
 
     st.subheader(f"{ranking_type} トップ5")
 
-    show_cols = ["料理名", "カテゴリー", "カロリー", "たんぱく質", "脂質", "糖質"]
+    # ここを修正：糖質→ビタミンA
+    show_cols = ["料理名", "カテゴリー", "カロリー", "たんぱく質", "脂質", "ビタミンA"]
 
-    # ランキング表のカラムをハイライト（薄い青）
     def highlight_cols(s):
         return ['background-color: #d0e7ff' if col == highlight_col else '' for col in s.index]
 
