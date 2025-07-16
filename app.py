@@ -35,7 +35,8 @@ def show_recipe_cards_grid(df, cards_per_row=3):
             row = df.iloc[idx]
             with cols[col_i]:
                 with st.expander(row["料理名"]):
-                    st.image(row["画像URL"], use_container_width=True)
+                    # 画像表示を削除しました
+                    # st.image(row["画像URL"], use_container_width=True)
                     st.plotly_chart(plot_nutrient_bar(row), use_container_width=True)
                     st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
                     if st.button(f"🍽️ 食べた ( {row['料理名']} )", key=row["料理名"]):
