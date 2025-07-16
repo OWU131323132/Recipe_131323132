@@ -41,7 +41,7 @@ def plot_food_log_summary(df, food_log):
     if not food_log:
         st.info("まだ食事記録がありません。")
         return
-    
+
     st.subheader("🍱 今日の食事記録グラフ")
 
     nutrients = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
@@ -75,28 +75,32 @@ def plot_food_log_summary(df, food_log):
         "カルシウム": 650,
     }
 
-    # 栄養素ごとにラインとラベルを追加
+    bar_width = 0.8  # Plotlyのバーの幅はおよそ0.8なので、それに合わせる
+
     for i, nutrient in enumerate(nutrients):
         y = target_values[nutrient]
-        # 横線を引く（x座標は-0.5からnutrients数-0.5まで）
+        # x座標はカテゴリなのでi。バーの幅に合わせて少し左右に線を引く
+        x0 = i - bar_width / 2
+        x1 = i + bar_width / 2
         fig.add_shape(
             type="line",
-            x0=-0.5, x1=len(nutrients)-0.5,
+            x0=x0, x1=x1,
             y0=y, y1=y,
             line=dict(color="red", dash="dash"),
             yref='y',
             xref='x'
         )
-        # ラベルをラインの右端の少し右に表示
+        # ラベルは線の真上（xの中心）に表示
         fig.add_annotation(
-            x=len(nutrients)-0.4,  # ラインの右端ちょい右
+            x=i,
             y=y,
             text=f"{nutrient} 目安",
             showarrow=False,
             font=dict(color="red", size=12),
             bgcolor="rgba(255,255,255,0.7)",
-            xanchor='left',
-            yanchor='middle'
+            xanchor='center',
+            yanchor='bottom',
+            yshift=5
         )
 
     fig.update_layout(
@@ -104,10 +108,11 @@ def plot_food_log_summary(df, food_log):
         title="積み上げ栄養素グラフ + 目安摂取量ライン",
         yaxis_title="摂取量",
         legend_title="食べた料理",
-        margin=dict(r=100)  # 右側にスペースを作るため
+        margin=dict(r=100)
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
 
 def main():
     st.set_page_config(page_title="栄養素レシピダッシュボード", layout="wide")
