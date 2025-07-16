@@ -115,10 +115,11 @@ def plot_food_log_summary(df, food_log):
 
     st.plotly_chart(fig, use_container_width=True)
 
-def highlight_specific_col(df, colname):
-    def highlight_cols(s):
-        return ['background-color: #cce5ff' if s.name == colname else '' for _ in s]
-    return df.style.apply(highlight_cols, axis=1)
+def highlight_col(col_name):
+    # pandasスタイル用の関数、該当列のセルを薄い青色にする
+    def highlight(s):
+        return ['background-color: #cce5ff' if s.name == col_name else '' for _ in s]
+    return highlight
 
 def main():
     st.set_page_config(page_title="毎日食べたい栄養レシピ", layout="wide")
@@ -166,8 +167,11 @@ def main():
 
     st.subheader(f"{ranking_type} トップ5")
 
-    styled_df = highlight_specific_col(rank_df[show_cols].head(5), highlight_col_name)
-    st.write(styled_df.to_html(escape=False), unsafe_allow_html=True)
+    # 色付けして表示
+    styled_df = rank_df[show_cols].head(5).style.apply(
+        lambda s: ['background-color: #cce5ff' if s.name == highlight_col_name else '' for _ in s], axis=1
+    )
+    st.dataframe(styled_df, use_container_width=True)
 
     st.subheader("🍽️ 食事記録")
     plot_food_log_summary(df, st.session_state.food_log)
