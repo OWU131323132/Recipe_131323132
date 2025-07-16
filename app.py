@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import requests
+from io import BytesIO
 
 @st.cache_data
 def load_data():
@@ -24,6 +26,16 @@ def plot_nutrient_bar(row):
     )
     return fig
 
+def load_image_from_url(url):
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            return BytesIO(response.content)
+        else:
+            return None
+    except:
+        return None
+
 def show_recipe_cards_grid(df, cards_per_row=3):
     rows = (len(df) + cards_per_row - 1) // cards_per_row
     for row_i in range(rows):
@@ -35,7 +47,11 @@ def show_recipe_cards_grid(df, cards_per_row=3):
             row = df.iloc[idx]
             with cols[col_i]:
                 with st.expander(row["料理名"]):
-                    st.image(row["画像URL"], use_container_width=True)
+                    img = load_image_from_url(row["画像URL"])
+                    if img:
+                        st.image(img, use_container_width=True)
+                    else:
+                        st.error("画像の読み込みに失敗しました")
                     st.plotly_chart(plot_nutrient_bar(row), use_container_width=True)
                     st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
                     if st.button(f"🍽️ 食べた ( {row['料理名']} )", key=row["料理名"]):
