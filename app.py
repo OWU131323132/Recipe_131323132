@@ -5,33 +5,33 @@ import plotly.graph_objects as go
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("data/recipes.csv")
-    # カテゴリー列の空白除去
-    df["カテゴリー"] = df["カテゴリー"].astype(str).str.strip()
-    return df
+    # 実際のファイルパスに合わせてください
+    return pd.read_csv("data/recipes.csv")
 
 def filter_data(df, selected_cats, nutrient_ranges):
-    # selected_catsが空なら全選択とみなす
-    if not selected_cats:
-        return df
-
+    # カテゴリーと栄養素範囲でフィルター
     cond = df["カテゴリー"].isin(selected_cats)
     for nut, (minv, maxv) in nutrient_ranges.items():
         cond &= (df[nut] >= minv) & (df[nut] <= maxv)
     return df[cond]
 
-def show_recipe_cards(df):
-    for _, row in df.iterrows():
-        with st.expander(row["料理名"]):
-            cols = st.columns([1, 2])
-            with cols[0]:
-                st.image(row["画像URL"], use_container_width=True)
-            with cols[1]:
-                nutri_text = "\n".join(
-                    [f"**{col}**: {row[col]}" for col in df.columns if col not in ["料理名", "カテゴリー", "画像URL"]]
-                )
-                st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
-                st.markdown(nutri_text)
+def show_recipe_cards_grid(df, cards_per_row=3):
+    rows = (len(df) + cards_per_row - 1) // cards_per_row  # 必要な行数を計算（切り上げ）
+    for row_i in range(rows):
+        cols = st.columns(cards_per_row)
+        for col_i in range(cards_per_row):
+            idx = row_i * cards_per_row + col_i
+            if idx >= len(df):
+                break
+            row = df.iloc[idx]
+            with cols[col_i]:
+                with st.expander(row["料理名"]):
+                    st.image(row["画像URL"], use_container_width=True)
+                    nutri_text = "\n".join(
+                        [f"**{col}**: {row[col]}" for col in df.columns if col not in ["料理名", "カテゴリー", "画像URL"]]
+                    )
+                    st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
+                    st.markdown(nutri_text)
 
 def plot_radar(df, selected_recipes):
     if selected_recipes:
@@ -57,7 +57,7 @@ def main():
     df = load_data()
 
     st.sidebar.header("フィルター")
-    categories = sorted(df["カテゴリー"].unique().tolist())
+    categories = df["カテゴリー"].unique().tolist()
     selected_cats = st.sidebar.multiselect("カテゴリー選択", categories, default=categories)
 
     nutrient_cols = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
@@ -69,7 +69,7 @@ def main():
     filtered_df = filter_data(df, selected_cats, nutrient_ranges)
 
     st.subheader(f"検索結果：{len(filtered_df)}件")
-    show_recipe_cards(filtered_df)
+    show_recipe_cards_grid(filtered_df, cards_per_row=3)
 
     st.sidebar.header("ランキング表示")
     ranking_type = st.sidebar.selectbox("ランキング軸選択", ["カロリー低い順", "たんぱく質多い順", "脂質バランス良い順", "ビタミン豊富順"])
