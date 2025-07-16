@@ -2,14 +2,16 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import requests
-from io import BytesIO
 from PIL import Image
+from io import BytesIO
 
+@st.cache_data(show_spinner=False)
 def load_image_from_url(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
-        return Image.open(BytesIO(response.content))
+        img = Image.open(BytesIO(response.content))
+        return img
     except Exception as e:
         st.warning(f"画像の読み込みエラー: {e}")
         return None
@@ -56,12 +58,10 @@ def show_recipe_cards_grid(df, cards_per_row=3):
                 break
             row = df.iloc[idx]
             with cols[col_i]:
-                # ここが変更箇所：expanderを開いたら画像を読み込み表示する
                 with st.expander(row["料理名"]):
-                    if st.checkbox("画像を表示", key=f"img_toggle_{idx}"):
-                        img = load_image_from_url(row["画像URL"])
-                        if img:
-                            st.image(img, use_container_width=True)
+                    img = load_image_from_url(row["画像URL"])
+                    if img:
+                        st.image(img, use_container_width=True)
                     st.plotly_chart(plot_nutrient_bar(row), use_container_width=True)
                     st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
 
