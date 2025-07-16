@@ -20,7 +20,7 @@ def show_recipe_cards(df):
         with st.expander(row["料理名"]):
             cols = st.columns([1, 2])
             with cols[0]:
-                st.image(row["画像URL"], use_column_width=True)
+                st.image(row["画像URL"], use_container_width=True)  # ←修正箇所
             with cols[1]:
                 nutri_text = "\n".join(
                     [f"**{col}**: {row[col]}" for col in df.columns if col not in ["料理名", "カテゴリー", "画像URL"]]
