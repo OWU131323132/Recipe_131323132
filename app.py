@@ -12,7 +12,7 @@ def filter_data(df, selected_cats, nutrient_ranges):
         cond &= (df[nut] >= minv) & (df[nut] <= maxv)
     return df[cond]
 
-def show_recipe_cards_grid(df, cards_per_row=3, food_log=[]):
+def show_recipe_cards_grid(df, cards_per_row=3):
     rows = (len(df) + cards_per_row - 1) // cards_per_row
     for row_i in range(rows):
         cols = st.columns(cards_per_row)
@@ -24,18 +24,13 @@ def show_recipe_cards_grid(df, cards_per_row=3, food_log=[]):
             with cols[col_i]:
                 with st.expander(row["料理名"]):
                     st.image(row["画像URL"], use_container_width=True)
+                    nutri_text = "\n".join(
+                        [f"**{col}**: {row[col]}" for col in df.columns if col not in ["料理名", "カテゴリー", "画像URL"]]
+                    )
                     st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
-
-                    nutrients = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
-                    values = [row[n] for n in nutrients]
-                    fig = go.Figure(data=[go.Bar(x=nutrients, y=values)])
-                    fig.update_layout(title="栄養素グラフ", yaxis_title="量")
-                    st.plotly_chart(fig, use_container_width=True)
-
-                    if st.button(f"🍽️ 食べた！ {row['料理名']}", key=f"log_{idx}"):
-                        food_log.append(row["料理名"])
-                        st.session_state["food_log"] = food_log.copy()
-                        st.success("食事記録に追加！")
+                    st.markdown(nutri_text)
+                    if st.button(f"🍽️ 食べた ( {row['料理名']} )", key=row["料理名"]):
+                        st.session_state.food_log.append(row["料理名"])
 
 def plot_food_log_summary(df, food_log):
     if not food_log:
@@ -55,11 +50,7 @@ def plot_food_log_summary(df, food_log):
         for nutrient in nutrients:
             stacked_data[nutrient].append(row[nutrient])
 
-    # 青系の色
-    blue_colors = [
-        "#1f77b4", "#3b8ec2", "#5ca0d3",
-        "#7db1e5", "#9ec3f7", "#bdd6fb"
-    ]
+    blue_colors = ["#1f77b4", "#3b8ec2", "#5ca0d3", "#7db1e5", "#9ec3f7", "#bdd6fb"]
 
     fig = go.Figure()
 
@@ -86,7 +77,6 @@ def plot_food_log_summary(df, food_log):
 
     bar_width = 0.8
 
-    # 凡例用のダミーライン（実線表示）
     fig.add_trace(go.Scatter(
         x=[None], y=[None],
         mode='lines',
@@ -94,7 +84,6 @@ def plot_food_log_summary(df, food_log):
         name="一日目安ライン"
     ))
 
-    # 栄養素ごとの目安ライン
     for i, nutrient in enumerate(nutrients):
         y = target_values[nutrient]
         x0 = i - bar_width / 2
@@ -110,24 +99,20 @@ def plot_food_log_summary(df, food_log):
 
     fig.update_layout(
         barmode='stack',
-        title="積み上げ栄養素グラフ + 一日目安ライン",
         yaxis_title="摂取量",
         legend_title="凡例",
-        margin=dict(r=100)
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-
 def main():
-    st.set_page_config(page_title="栄養素レシピダッシュボード", layout="wide")
+    st.set_page_config(page_title="栄養素たっぷりレシピダッシュボード", layout="wide")
     st.title("🥗 栄養素たっぷりレシピダッシュボード")
 
-    df = load_data()
-
     if "food_log" not in st.session_state:
-        st.session_state["food_log"] = []
-    food_log = st.session_state["food_log"]
+        st.session_state.food_log = []
+
+    df = load_data()
 
     st.sidebar.header("フィルター")
     categories = df["カテゴリー"].unique().tolist()
@@ -137,44 +122,34 @@ def main():
     nutrient_ranges = {}
     for col in nutrient_cols:
         min_val, max_val = int(df[col].min()), int(df[col].max())
-        nutrient_ranges[col] = st.sidebar.slider(f"{col} 範囲", min_val, max_val, (min_val, max_val))
+        nutrient_ranges[col] = st.sidebar.slider(f"{col}範囲", min_val, max_val, (min_val, max_val))
 
     filtered_df = filter_data(df, selected_cats, nutrient_ranges)
 
     st.subheader(f"検索結果：{len(filtered_df)}件")
-    show_recipe_cards_grid(filtered_df, food_log=food_log)
+    show_recipe_cards_grid(filtered_df)
 
     st.sidebar.header("ランキング表示")
     ranking_type = st.sidebar.selectbox("ランキング軸選択", ["カロリー低い順", "たんぱく質多い順", "脂質少ない順", "ビタミン豊富順"])
 
     if ranking_type == "カロリー低い順":
         rank_df = filtered_df.sort_values("カロリー")
-        highlight_col = "カロリー"
+        show_cols = ["料理名", "カテゴリー", "カロリー", "たんぱく質", "脂質", "ビタミンA"]
     elif ranking_type == "たんぱく質多い順":
         rank_df = filtered_df.sort_values("たんぱく質", ascending=False)
-        highlight_col = "たんぱく質"
+        show_cols = ["料理名", "カテゴリー", "たんぱく質", "カロリー", "脂質", "ビタミンA"]
     elif ranking_type == "脂質少ない順":
         rank_df = filtered_df.sort_values("脂質")
-        highlight_col = "脂質"
-    else:
+        show_cols = ["料理名", "カテゴリー", "脂質", "カロリー", "たんぱく質", "ビタミンA"]
+    else:  # ビタミン豊富順
         rank_df = filtered_df.assign(ビタミン合計=filtered_df["ビタミンA"] + filtered_df["ビタミンC"]).sort_values("ビタミン合計", ascending=False)
-        highlight_col = "ビタミンA"
+        show_cols = ["料理名", "カテゴリー", "ビタミン合計", "カロリー", "たんぱく質", "脂質"]
 
     st.subheader(f"{ranking_type} トップ5")
+    st.dataframe(rank_df[show_cols].head(5), use_container_width=True)
 
-    show_cols = ["料理名", "カテゴリー", "カロリー", "たんぱく質", "脂質", "ビタミンA"]
-
-    def highlight_cols(s):
-        return ['background-color: #d0e7ff' if col == highlight_col else '' for col in s.index]
-
-    st.dataframe(rank_df[show_cols].head(5).style.apply(highlight_cols, axis=1), use_container_width=True)
-
-    st.subheader("食事記録まとめ")
-    plot_food_log_summary(df, food_log)
-
-    if st.sidebar.button("食事記録クリア"):
-        st.session_state["food_log"] = []
-        st.experimental_rerun()
+    st.subheader("🍽️ 食事記録")
+    plot_food_log_summary(df, st.session_state.food_log)
 
 if __name__ == "__main__":
     main()
