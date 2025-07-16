@@ -63,7 +63,7 @@ def plot_food_log_summary(df, food_log):
             y=[stacked_data[nutrient][i] for nutrient in nutrients]
         ))
 
-    # 目安摂取量ライン（仮設定、必要に応じて調整）
+    # 横ライン：目安摂取量
     target_values = {
         "カロリー": 2000,
         "たんぱく質": 60,
@@ -79,15 +79,16 @@ def plot_food_log_summary(df, food_log):
     for nutrient in nutrients:
         fig.add_shape(
             type="line",
-            x0=nutrient, x1=nutrient,
-            y0=0, y1=target_values[nutrient],
+            x0=-0.5, x1=len(nutrients)-0.5,
+            y0=target_values[nutrient], y1=target_values[nutrient],
             line=dict(color="red", dash="dash"),
-            xref='x', yref='y'
+            yref='y',
+            xref='x'
         )
 
     fig.update_layout(
         barmode='stack',
-        title="積み上げ栄養素グラフ + 一日目安ライン",
+        title="積み上げ栄養素グラフ + 目安摂取量ライン",
         yaxis_title="摂取量",
         legend_title="食べた料理"
     )
@@ -124,7 +125,7 @@ def main():
 
     if st.sidebar.button("食事記録クリア"):
         st.session_state["food_log"] = []
-        st.experimental_rerun()
+        st.success("食事記録をクリアしました！")
 
 if __name__ == "__main__":
     main()
