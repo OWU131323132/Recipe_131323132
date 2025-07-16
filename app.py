@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 
 @st.cache_data
@@ -13,7 +12,7 @@ def filter_data(df, selected_cats, nutrient_ranges):
         cond &= (df[nut] >= minv) & (df[nut] <= maxv)
     return df[cond]
 
-def show_recipe_cards_grid(df, cards_per_row=3, favorites=[], food_log=[]):
+def show_recipe_cards_grid(df, cards_per_row=3, food_log=[]):
     rows = (len(df) + cards_per_row - 1) // cards_per_row
     for row_i in range(rows):
         cols = st.columns(cards_per_row)
@@ -25,77 +24,84 @@ def show_recipe_cards_grid(df, cards_per_row=3, favorites=[], food_log=[]):
             with cols[col_i]:
                 with st.expander(row["料理名"]):
                     st.image(row["画像URL"], use_container_width=True)
-
                     st.markdown(f"**カテゴリー:** {row['カテゴリー']}")
 
-                    # 栄養素グラフ表示
                     nutrients = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
-                    fig = px.bar(
-                        x=nutrients,
-                        y=[row[n] for n in nutrients],
-                        labels={"x": "栄養素", "y": "量"},
-                        title="栄養素グラフ"
-                    )
+                    values = [row[n] for n in nutrients]
+                    fig = go.Figure(data=[go.Bar(x=nutrients, y=values)])
+                    fig.update_layout(title="栄養素グラフ", yaxis_title="量")
                     st.plotly_chart(fig, use_container_width=True)
 
-                    # 食事記録ボタン
                     if st.button(f"🍽️ 食べた！ {row['料理名']}", key=f"log_{idx}"):
                         food_log.append(row["料理名"])
                         st.session_state["food_log"] = food_log.copy()
                         st.success("食事記録に追加！")
 
-                    # お気に入りボタン
-                    if st.button(f"⭐ お気に入り {row['料理名']}", key=f"fav_{idx}"):
-                        favorites.append(row["料理名"])
-                        st.session_state["favorites"] = favorites.copy()
-                        st.success("お気に入りに追加！")
-
-def plot_radar(df, selected_recipes):
-    if selected_recipes:
-        nutri_cols = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
-        fig = go.Figure()
-        for recipe in selected_recipes:
-            d = df[df["料理名"] == recipe].iloc[0]
-            fig.add_trace(go.Scatterpolar(
-                r=[d[n] for n in nutri_cols],
-                theta=nutri_cols,
-                fill='toself',
-                name=recipe
-            ))
-        fig.update_layout(polar=dict(radialaxis=dict(visible=True)), showlegend=True)
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("レシピを選択すると栄養素比較グラフを表示します。")
-
 def plot_food_log_summary(df, food_log):
-    if food_log:
-        st.subheader("🍱 今日の食事記録：")
-        st.write(food_log)
+    if not food_log:
+        st.info("まだ食事記録がありません。")
+        return
+    
+    st.subheader("🍱 今日の食事記録グラフ")
 
-        log_df = df[df["料理名"].isin(food_log)]
-        summary = log_df[["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]].sum()
-        st.write("**合計栄養素**", summary)
+    nutrients = ["カロリー", "たんぱく質", "脂質", "糖質", "食物繊維", "ビタミンA", "ビタミンC", "鉄分", "カルシウム"]
 
-        fig = px.bar(
-            x=summary.index,
-            y=summary.values,
-            labels={"x": "栄養素", "y": "合計量"},
-            title="今日の食事合計栄養素"
+    log_df = df[df["料理名"].isin(food_log)]
+    stacked_data = {nutrient: [] for nutrient in nutrients}
+    labels = []
+
+    for _, row in log_df.iterrows():
+        labels.append(row["料理名"])
+        for nutrient in nutrients:
+            stacked_data[nutrient].append(row[nutrient])
+
+    fig = go.Figure()
+    for i, recipe in enumerate(labels):
+        fig.add_trace(go.Bar(
+            name=recipe,
+            x=nutrients,
+            y=[stacked_data[nutrient][i] for nutrient in nutrients]
+        ))
+
+    # 目安摂取量ライン（仮設定、必要に応じて調整）
+    target_values = {
+        "カロリー": 2000,
+        "たんぱく質": 60,
+        "脂質": 65,
+        "糖質": 300,
+        "食物繊維": 20,
+        "ビタミンA": 800,
+        "ビタミンC": 100,
+        "鉄分": 10,
+        "カルシウム": 650,
+    }
+
+    for nutrient in nutrients:
+        fig.add_shape(
+            type="line",
+            x0=nutrient, x1=nutrient,
+            y0=0, y1=target_values[nutrient],
+            line=dict(color="red", dash="dash"),
+            xref='x', yref='y'
         )
-        st.plotly_chart(fig, use_container_width=True)
+
+    fig.update_layout(
+        barmode='stack',
+        title="積み上げ栄養素グラフ + 一日目安ライン",
+        yaxis_title="摂取量",
+        legend_title="食べた料理"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
 def main():
-    st.set_page_config(page_title="栄養素豊富レシピダッシュボード", layout="wide")
+    st.set_page_config(page_title="栄養素レシピダッシュボード", layout="wide")
     st.title("🥗 栄養素たっぷりレシピダッシュボード")
 
     df = load_data()
 
-    if "favorites" not in st.session_state:
-        st.session_state["favorites"] = []
     if "food_log" not in st.session_state:
         st.session_state["food_log"] = []
-
-    favorites = st.session_state["favorites"]
     food_log = st.session_state["food_log"]
 
     st.sidebar.header("フィルター")
@@ -106,63 +112,17 @@ def main():
     nutrient_ranges = {}
     for col in nutrient_cols:
         min_val, max_val = int(df[col].min()), int(df[col].max())
-        nutrient_ranges[col] = st.sidebar.slider(f"{col}範囲", min_val, max_val, (min_val, max_val))
+        nutrient_ranges[col] = st.sidebar.slider(f"{col} 範囲", min_val, max_val, (min_val, max_val))
 
     filtered_df = filter_data(df, selected_cats, nutrient_ranges)
 
     st.subheader(f"検索結果：{len(filtered_df)}件")
-    show_recipe_cards_grid(filtered_df, favorites=favorites, food_log=food_log)
+    show_recipe_cards_grid(filtered_df, food_log=food_log)
 
-    st.sidebar.header("ランキング表示")
-    ranking_type = st.sidebar.selectbox("ランキング軸選択", ["カロリー低い順", "たんぱく質多い順", "脂質バランス良い順", "ビタミン豊富順"])
-
-    # フィルター後のランキングデータ
-    rank_df = filtered_df.copy()
-
-    if ranking_type == "カロリー低い順":
-        rank_df = rank_df.sort_values("カロリー")
-        highlight_col = "カロリー"
-    elif ranking_type == "たんぱく質多い順":
-        rank_df = rank_df.sort_values("たんぱく質", ascending=False)
-        highlight_col = "たんぱく質"
-    elif ranking_type == "脂質バランス良い順":
-        rank_df = rank_df.assign(脂糖合計=rank_df["脂質"] + rank_df["糖質"]).sort_values(["脂糖合計", "たんぱく質"])
-        highlight_col = "脂質"
-    else:
-        rank_df = rank_df.assign(ビタミン合計=rank_df["ビタミンA"] + rank_df["ビタミンC"]).sort_values("ビタミン合計", ascending=False)
-        highlight_col = "ビタミンA"
-
-    st.subheader(f"{ranking_type} トップ5")
-
-    show_cols = ["料理名", "カテゴリー"] + nutrient_cols
-    rank_display_df = rank_df[show_cols].head(5)
-
-    # DataFrameのスタイル適用
-    st.dataframe(
-        rank_display_df.style.applymap(
-            lambda v: "background-color: #e0f7fa;" if v == rank_display_df[highlight_col].max() or v == rank_display_df[highlight_col].min() else "",
-            subset=[highlight_col]
-        ),
-        use_container_width=True
-    )
-
-    st.subheader("レーダーチャート")
-    selected_recipes = st.multiselect("比較したいレシピを選択", filtered_df["料理名"].tolist())
-    plot_radar(df, selected_recipes)
-
+    st.subheader("食事記録まとめ")
     plot_food_log_summary(df, food_log)
 
-    st.sidebar.header("お気に入り一覧")
-    if favorites:
-        st.sidebar.write(favorites)
-    else:
-        st.sidebar.write("お気に入りなし")
-
-    if st.sidebar.button("お気に入り全消し"):
-        st.session_state["favorites"] = []
-        st.experimental_rerun()
-
-    if st.sidebar.button("食事記録全消し"):
+    if st.sidebar.button("食事記録クリア"):
         st.session_state["food_log"] = []
         st.experimental_rerun()
 
